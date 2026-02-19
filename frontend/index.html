@@ -592,6 +592,30 @@
                 )
             );
         }
+
+        function InsightsPage() {
+            const { data, loading, error } = useFetch(`${API_BASE}/insights`);
+
+            return React.createElement("div", { className: "fade-up" },
+                React.createElement("div", { className: "page-header" },
+                React.createElement("div", { className: "page-title" }, "Insights & Recommendations"),
+                React.createElement("div", { className: "page-sub" }, "Auto-generated from data analysis")
+                ),
+                loading ? React.createElement(Spinner, { text: "Fetching insights…" }) :
+                error   ? React.createElement(ErrorBox, { msg: error }) :
+                React.createElement("div", { className: "card" },
+                data.generated_at && React.createElement("div", { style: { marginBottom: 16, color: "var(--muted)", fontFamily: "var(--mono)", fontSize: 11 } },
+                    "Generated: " + new Date(data.generated_at).toLocaleString("en-IN")
+                ),
+                data.insights.map((ins, i) =>
+                    React.createElement("div", { key: i, className: "insight-item" },
+                    React.createElement("div", { className: "insight-num" }, i + 1),
+                    React.createElement("div", { className: "insight-text" }, ins)
+                    )
+                )
+                )
+            );
+        }
     </script>
 </body>
 </html>
