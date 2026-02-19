@@ -88,6 +88,92 @@
                 )
             );
         }
+
+        function OverviewPage() {
+            const { data: sum, loading, error } = useFetch(`${API_BASE}/summary`);
+            const { data: monthly } = useFetch(`${API_BASE}/monthly`);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                if (!monthly || !chartRef.current) return;
+                const months = monthly.monthly_data;
+                if (chartInstance.current) chartInstance.current.destroy();
+                chartInstance.current = new Chart(chartRef.current, {
+                type: "bar",
+                data: {
+                    labels: months.map(m => m.month),
+                    datasets: [
+                    {
+                        label: "Spend (₹)",
+                        data: months.map(m => m.total_spend),
+                        backgroundColor: "rgba(124,58,237,0.7)",
+                        borderRadius: 6,
+                        barPercentage: 0.55,
+                    },
+                    {
+                        label: "Revenue (₹)",
+                        data: months.map(m => m.total_revenue),
+                        backgroundColor: "rgba(6,182,212,0.7)",
+                        borderRadius: 6,
+                        barPercentage: 0.55,
+                    },
+                    ],
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: "#6b6b80", font: { family: "Space Mono", size: 11 } } },
+                        tooltip: { callbacks: { label: ctx => "₹" + Number(ctx.raw).toLocaleString("en-IN") } },
+                    },
+                    scales: {
+                        x: { ticks: { color: "#6b6b80", font: { family: "Space Mono", size: 11 } }, grid: { color: "#1e1e2e" } },
+                        y: { ticks: { color: "#6b6b80", font: { family: "Space Mono", size: 11 }, callback: v => "₹" + (v/1e6).toFixed(1)+"M" }, grid: { color: "#1e1e2e" } },
+                    },
+                },
+                });
+            }, [monthly]);
+
+        if (loading) return React.createElement(Spinner, { text: "Fetching summary…" });
+        if (error)   return React.createElement(ErrorBox, { msg: error });
+
+        const s = sum;
+        const kpis = [
+            { label: "Total Spend",       value: fmtCurr(s.total_spend),       cls: "purple", badge: null },
+            { label: "Total Revenue",     value: fmtCurr(s.total_revenue),     cls: "cyan",   badge: null },
+            { label: "Total Conversions", value: fmt(s.total_conversions),     cls: "green",  badge: null },
+            {
+            label: "Overall ROAS",
+            value: s.overall_roas.toFixed(2) + "x",
+            cls: s.overall_roas >= 3 ? "green" : s.overall_roas >= 2 ? "yellow" : "red",
+            badge: s.overall_roas >= 3 ? { text: "Strong", cls: "badge-green" } : { text: "Needs work", cls: "badge-red" },
+            },
+            { label: "Overall CPA",  value: fmtCurr(s.overall_cpa), cls: "yellow", badge: null },
+            { label: "Overall CPC",  value: fmtCurr(s.overall_cpc), cls: "purple", badge: null },
+        ];
+
+        return React.createElement("div", { className: "fade-up" },
+            React.createElement("div", { className: "page-header" },
+            React.createElement("div", { className: "page-title" }, "Performance Overview"),
+            React.createElement("div", { className: "page-sub" }, "Aggregate KPIs across all channels · all time")
+            ),
+            React.createElement("div", { className: "kpi-grid" },
+            kpis.map((k, i) =>
+                React.createElement("div", { key: i, className: `kpi-card ${k.cls}` },
+                React.createElement("div", { className: "kpi-label" }, k.label),
+                React.createElement("div", { className: "kpi-value" }, k.value),
+                k.badge && React.createElement("span", { className: `kpi-badge ${k.badge.cls}` }, k.badge.text)
+                )
+            )
+            ),
+            React.createElement("div", { className: "card section" },
+            React.createElement("div", { className: "card-title" }, "Monthly Spend vs Revenue"),
+            React.createElement("div", { className: "chart-container" },
+                React.createElement("canvas", { ref: chartRef })
+            )
+            )
+        );
+        }
     </script>
 </body>
 </html>
