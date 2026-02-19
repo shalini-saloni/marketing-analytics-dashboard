@@ -1,41 +1,40 @@
-'use strict';
+const pool = require("../config/database");
 
-const Campaign = require('../models/Campaign');
-
-async function getCampaigns(req, res, next) {
+exports.getCampaigns = async (req, res) => {
   try {
     const { channel, min_roas, max_roas } = req.query;
+    const conditions = [];
+    const params = [];
 
-    if (min_roas !== undefined && isNaN(parseFloat(min_roas))) {
-      return res.status(400).json({ error: 'min_roas must be a valid number.' });
+    if (channel) {
+      conditions.push("channel_name = ?");
+      params.push(channel);
     }
-    if (max_roas !== undefined && isNaN(parseFloat(max_roas))) {
-      return res.status(400).json({ error: 'max_roas must be a valid number.' });
+    if (min_roas !== undefined) {
+      const val = parseFloat(min_roas);
+      if (isNaN(val)) return res.status(400).json({ error: "min_roas must be a number." });
+      conditions.push("roas >= ?");
+      params.push(val);
     }
-    if (min_roas && max_roas && parseFloat(min_roas) > parseFloat(max_roas)) {
-      return res.status(400).json({ error: 'min_roas cannot be greater than max_roas.' });
+    if (max_roas !== undefined) {
+      const val = parseFloat(max_roas);
+      if (isNaN(val)) return res.status(400).json({ error: "max_roas must be a number." });
+      conditions.push("roas <= ?");
+      params.push(val);
     }
 
-    const campaigns = await Campaign.findAll({
-      channel:  channel  || null,
-      min_roas: min_roas ?? null,
-      max_roas: max_roas ?? null,
-    });
+    const where = conditions.length ? "WHERE " + conditions.join(" AND ") : "";
+    const [rows] = await pool.query(
+      `SELECT id, channel_name, campaign_name, total_spend, total_revenue,
+              conversions, roas, cpa, cpc
+       FROM campaigns ${where}
+       ORDER BY roas DESC`,
+      params
+    );
 
-    res.json({
-      campaigns: campaigns.map(c => ({
-        id:            c.id,
-        channel_name:  c.channel_name,
-        campaign_name: c.campaign_name,
-        total_spend:   Number(c.total_spend),
-        total_revenue: Number(c.total_revenue),
-        conversions:   Number(c.conversions),
-        roas:          Number(c.roas),
-      })),
-    });
+    res.json({ campaigns: rows });
   } catch (err) {
-    next(err);
+    console.error("[campaigns]", err.message);
+    res.status(500).json({ error: "Failed to fetch campaign data." });
   }
-}
-
-module.exports = { getCampaigns };
+};
