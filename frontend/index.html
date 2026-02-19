@@ -58,7 +58,36 @@
             return React.createElement("div", { className: "error-box" }, "⚠  " + msg);
         }
 
-        
+        const NAV = [
+            { id: "overview",   label: "Overview",    icon: "◈" },
+            { id: "channels",   label: "Channels",    icon: "⊞" },
+            { id: "monthly",    label: "Monthly",     icon: "◷" },
+            { id: "campaigns",  label: "Campaigns",   icon: "◉" },
+            { id: "insights",   label: "Insights",    icon: "✦" },
+        ];
+
+        function Sidebar({ active, onNav }) {
+            return React.createElement("aside", { className: "sidebar" },
+                React.createElement("div", { className: "logo" },
+                    React.createElement("div", null,
+                        "Mkt", React.createElement("span", null, "Analytics")
+                    ),
+                    React.createElement("div", { className: "logo-sub" }, "Dashboard v1.0")
+                ),
+                React.createElement("nav", { className: "nav" },
+                    NAV.map(item =>
+                        React.createElement("div", {
+                            key: item.id,
+                            className: `nav-item ${active === item.id ? "active" : ""}`,
+                            onClick: () => onNav(item.id),
+                        },
+                            React.createElement("span", { className: "nav-icon" }, item.icon),
+                            React.createElement("span", null, item.label)
+                        )
+                    )
+                )
+            );
+        }
     </script>
 </body>
 </html>
