@@ -1,28 +1,28 @@
-'use strict';
+const pool = require("../config/database");
 
-const MonthlyPerformance = require('../models/MonthlyPerformance');
-
-async function getMonthly(req, res, next) {
+exports.getMonthly = async (req, res) => {
   try {
     const { month } = req.query;
-    const data = await MonthlyPerformance.findAll(month || null);
 
-    res.json({
-      monthly_data: data.map(row => ({
-        id:                row.id,
-        month:             row.month,
-        total_spend:       Number(row.total_spend),
-        total_revenue:     Number(row.total_revenue),
-        total_conversions: Number(row.total_conversions),
-        roas:              Number(row.roas),
-      })),
-    });
-  } catch (err) {
-    if (err.status === 400) {
-      return res.status(400).json({ error: err.message });
+    let query = `SELECT id, month, total_spend, total_revenue, total_conversions,
+                        roas, mom_spend_pct, mom_revenue_pct
+                 FROM monthly_performance`;
+    const params = [];
+
+    if (month) {
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return res.status(400).json({ error: "Invalid month format. Use YYYY-MM." });
+      }
+      query += " WHERE month = ?";
+      params.push(month);
     }
-    next(err);
-  }
-}
 
-module.exports = { getMonthly };
+    query += " ORDER BY month ASC";
+
+    const [rows] = await pool.query(query, params);
+    res.json({ monthly_data: rows });
+  } catch (err) {
+    console.error("[monthly]", err.message);
+    res.status(500).json({ error: "Failed to fetch monthly data." });
+  }
+};
