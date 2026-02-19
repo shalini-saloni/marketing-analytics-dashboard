@@ -11,6 +11,54 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
-    
+    <div id="root"></div>
+    <script>
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        const API_BASE = (window.location.port === "5500" || window.location.protocol === "file:")
+            ? "http://localhost:3001/api"
+            : "/api";
+
+        const fmt = (n, dec = 0) =>
+            (n == null ? "—" : Number(n).toLocaleString("en-IN", { maximumFractionDigits: dec }));
+
+        const fmtCurr = (n) =>
+            n == null ? "—" : "₹" + fmt(n);
+
+        const roasColor = (r) =>
+            r >= 4 ? "roas-green" : r >= 2 ? "roas-yellow" : "roas-red";
+
+        const roasBadgeClass = (r) =>
+            r >= 3 ? "badge-green" : r >= 2 ? "badge-yellow" : "badge-red";
+
+        function useFetch(url) {
+        const [data, setData]     = useState(null);
+        const [loading, setLoading] = useState(true);
+        const [error, setError]   = useState(null);
+
+        useEffect(() => {
+            setLoading(true); setError(null);
+            fetch(url)
+            .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+            .then(d => { setData(d); setLoading(false); })
+            .catch(e => { setError(e.message); setLoading(false); });
+        }, [url]);
+
+        return { data, loading, error };
+        }
+
+        function Spinner({ text = "Loading…" }) {
+            return React.createElement("div", { className: "spinner-wrap" },
+                React.createElement("div", { className: "spinner" }),
+                React.createElement("div", { className: "spinner-text" }, text)
+            );
+        }
+
+        function ErrorBox({ msg }) {
+            return React.createElement("div", { className: "error-box" }, "⚠  " + msg);
+        }
+
+        
+    </script>
 </body>
 </html>
