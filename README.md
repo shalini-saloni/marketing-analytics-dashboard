@@ -1,5 +1,3 @@
-# README_FULLSTACK.md — Marketing Analytics Dashboard (Part B)
-
 ## Project Structure
 
 ```
