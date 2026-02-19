@@ -453,9 +453,144 @@
                     )
                 )
                 )
+                )
+                )
+            );
+        }
+
+        function CampaignsPage() {
+            const [channel, setChannel] = useState("");
+            const [minRoas, setMinRoas] = useState("");
+            const [maxRoas, setMaxRoas] = useState("");
+            const [urlParams, setUrlParams] = useState("");
+            const [tab, setTab] = useState("all");
+
+            const { data, loading, error } = useFetch(`${API_BASE}/campaigns${urlParams}`);
+            const { data: channelData } = useFetch(`${API_BASE}/channels`);
+            const channels = channelData?.channels?.map(c => c.name) || [];
+
+            const applyFilters = () => {
+                const p = new URLSearchParams();
+                if (channel) p.set("channel", channel);
+                if (minRoas) p.set("min_roas", minRoas);
+                if (maxRoas) p.set("max_roas", maxRoas);
+                setUrlParams(p.toString() ? "?" + p.toString() : "");
+            };
+
+            const campaigns = data?.campaigns || [];
+            const top5 = [...campaigns].sort((a, b) => b.roas - a.roas).slice(0, 5);
+            const underperforming = campaigns.filter(c => c.total_spend > 50000 && c.roas < 2.0);
+            const scaling = campaigns.filter(c => c.roas > 5.0 && c.total_spend < 20000);
+
+            const CampCard = ({ c }) =>
+                React.createElement("div", { className: "camp-card" },
+                React.createElement("div", { className: "camp-name" }, c.campaign_name),
+                React.createElement("div", { className: "camp-channel" }, c.channel_name),
+                React.createElement("div", { className: "camp-metrics" },
+                    React.createElement("div", { className: "camp-metric" },
+                    React.createElement("label", null, "Spend"), React.createElement("span", null, fmtCurr(c.total_spend))
+                    ),
+                    React.createElement("div", { className: "camp-metric" },
+                    React.createElement("label", null, "Revenue"), React.createElement("span", null, fmtCurr(c.total_revenue))
+                    ),
+                    React.createElement("div", { className: "camp-metric" },
+                    React.createElement("label", null, "ROAS"),
+                    React.createElement("span", { className: `roas-badge ${roasColor(c.roas)}` }, Number(c.roas).toFixed(2) + "x")
+                    ),
+                    React.createElement("div", { className: "camp-metric" },
+                    React.createElement("label", null, "Conversions"), React.createElement("span", null, fmt(c.conversions))
+                    ),
+                )
+                );
+
+            const tabs = [
+                { id: "all",     label: "All Campaigns" },
+                { id: "top5",    label: `Top 5 ROAS` },
+                { id: "under",   label: `⚠ Underperforming (${underperforming.length})` },
+                { id: "scale",   label: `🚀 Scaling Opps (${scaling.length})` },
+            ];
+
+            const displayed = tab === "all" ? campaigns : tab === "top5" ? top5 : tab === "under" ? underperforming : scaling;
+
+            return React.createElement("div", { className: "fade-up" },
+            React.createElement("div", { className: "page-header" },
+            React.createElement("div", { className: "page-title" }, "Campaign Performance"),
+            React.createElement("div", { className: "page-sub" }, "28 campaigns across 7 channels")
+            ),
+            React.createElement("div", { className: "card section" },
+            React.createElement("div", { className: "card-title" }, "Filters"),
+            React.createElement("div", { className: "filters" },
+                React.createElement("div", { className: "filter-group" },
+                React.createElement("label", null, "Channel"),
+                React.createElement("select", { value: channel, onChange: e => setChannel(e.target.value) },
+                    React.createElement("option", { value: "" }, "All Channels"),
+                    channels.map(c => React.createElement("option", { key: c, value: c }, c))
+                )
+                ),
+                React.createElement("div", { className: "filter-group" },
+                React.createElement("label", null, "Min ROAS"),
+                React.createElement("input", { type: "number", placeholder: "e.g. 2.0", value: minRoas, onChange: e => setMinRoas(e.target.value), style: { width: 100 } })
+                ),
+                React.createElement("div", { className: "filter-group" },
+                React.createElement("label", null, "Max ROAS"),
+                React.createElement("input", { type: "number", placeholder: "e.g. 8.0", value: maxRoas, onChange: e => setMaxRoas(e.target.value), style: { width: 100 } })
+                ),
+                React.createElement("div", { className: "filter-group", style: { justifyContent: "flex-end" } },
+                React.createElement("button", { className: "btn", onClick: applyFilters }, "Apply"),
+                ),
+                React.createElement("div", { className: "filter-group", style: { justifyContent: "flex-end" } },
+                React.createElement("button", { className: "btn-ghost", onClick: () => { setChannel(""); setMinRoas(""); setMaxRoas(""); setUrlParams(""); } }, "Reset")
+                ),
             )
+            ),
+            React.createElement("div", { className: "month-tabs section" },
+            tabs.map(t =>
+                React.createElement("div", { key: t.id, className: `month-tab ${tab === t.id ? "active" : ""}`, onClick: () => setTab(t.id) }, t.label)
             )
-        );
+            ),
+            loading ? React.createElement(Spinner) :
+            error   ? React.createElement(ErrorBox, { msg: error }) :
+            React.createElement("div", null,
+            tab === "all" || tab === "top5"
+                ? React.createElement("div", { className: "card" },
+                    React.createElement("div", { className: "table-wrap" },
+                    React.createElement("table", null,
+                        React.createElement("thead", null,
+                        React.createElement("tr", null,
+                            React.createElement("th", null, "Campaign"),
+                            React.createElement("th", null, "Channel"),
+                            React.createElement("th", null, "Spend"),
+                            React.createElement("th", null, "Revenue"),
+                            React.createElement("th", null, "Conversions"),
+                            React.createElement("th", null, "ROAS"),
+                            React.createElement("th", null, "CPA"),
+                        )
+                        ),
+                        React.createElement("tbody", null,
+                        displayed.map((c, i) =>
+                            React.createElement("tr", { key: i },
+                            React.createElement("td", { style: { fontFamily: "var(--sans)", fontWeight: 600, fontSize: 13 } }, c.campaign_name),
+                            React.createElement("td", null, c.channel_name),
+                            React.createElement("td", null, fmtCurr(c.total_spend)),
+                            React.createElement("td", null, fmtCurr(c.total_revenue)),
+                            React.createElement("td", null, fmt(c.conversions)),
+                            React.createElement("td", null,
+                                React.createElement("span", { className: `roas-badge ${roasColor(c.roas)}` }, Number(c.roas).toFixed(2) + "x")
+                            ),
+                            React.createElement("td", null, fmtCurr(c.cpa)),
+                            )
+                        )
+                        )
+                    )
+                    )
+                )
+                : React.createElement("div", { className: "camp-grid" },
+                    displayed.length === 0
+                    ? React.createElement("div", { style: { color: "var(--muted)", fontFamily: "var(--mono)", padding: 20 } }, "No campaigns match these criteria.")
+                    : displayed.map((c, i) => React.createElement(CampCard, { key: i, c }))
+                )
+                )
+            );
         }
     </script>
 </body>
