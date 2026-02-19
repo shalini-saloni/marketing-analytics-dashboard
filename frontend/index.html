@@ -309,6 +309,154 @@
             )
         );
         }
+
+        function MonthlyPage() {
+            const { data, loading, error } = useFetch(`${API_BASE}/monthly`);
+            const [selectedMonth, setSelectedMonth] = useState(null);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            const months = data?.monthly_data || [];
+
+            useEffect(() => {
+                if (months.length && !selectedMonth) setSelectedMonth(months[months.length - 1].month);
+            }, [months]);
+
+            useEffect(() => {
+                if (!months.length || !chartRef.current) return;
+                if (chartInstance.current) chartInstance.current.destroy();
+                chartInstance.current = new Chart(chartRef.current, {
+                type: "line",
+                data: {
+                    labels: months.map(m => m.month),
+                    datasets: [
+                    {
+                        label: "ROAS",
+                        data: months.map(m => m.roas),
+                        borderColor: "rgba(124,58,237,1)", backgroundColor: "rgba(124,58,237,0.1)",
+                        fill: true, tension: 0.4, pointBackgroundColor: "rgba(124,58,237,1)",
+                    },
+                    ],
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: "#6b6b80", font: { family: "Space Mono", size: 11 } } } },
+                    scales: {
+                    x: { ticks: { color: "#6b6b80", font: { family: "Space Mono", size: 11 } }, grid: { color: "#1e1e2e" } },
+                    y: { ticks: { color: "#6b6b80", font: { family: "Space Mono", size: 11 }, callback: v => v.toFixed(2) + "x" }, grid: { color: "#1e1e2e" } },
+                    },
+                },
+                });
+            }, [months]);
+
+        const selected = months.find(m => m.month === selectedMonth);
+
+        const MomChip = ({ val }) => {
+            if (val == null) return React.createElement("span", { style: { color: "var(--muted)" } }, "—");
+            const up = val >= 0;
+            return React.createElement("span", { className: `mom-indicator ${up ? "mom-up" : "mom-down"}` },
+            up ? "▲" : "▼", " ", Math.abs(val).toFixed(1) + "%"
+            );
+        };
+
+        return React.createElement("div", { className: "fade-up" },
+            React.createElement("div", { className: "page-header" },
+            React.createElement("div", { className: "page-title" }, "Monthly Trends"),
+            React.createElement("div", { className: "page-sub" }, "6 months · August 2025 – January 2026")
+            ),
+            loading ? React.createElement(Spinner) :
+            error   ? React.createElement(ErrorBox, { msg: error }) :
+            React.createElement("div", null,
+            React.createElement("div", { className: "card section" },
+                React.createElement("div", { className: "card-title" }, "ROAS Trend"),
+                React.createElement("div", { className: "chart-container" },
+                React.createElement("canvas", { ref: chartRef })
+                )
+            ),
+             React.createElement("div", { className: "month-tabs" },
+                months.map(m =>
+                React.createElement("div", {
+                    key: m.month,
+                    className: `month-tab ${selectedMonth === m.month ? "active" : ""}`,
+                    onClick: () => setSelectedMonth(m.month),
+                }, m.month)
+                )
+            ),
+            selected && React.createElement("div", { className: "kpi-grid" },
+                [
+                { label: "Spend",         value: fmtCurr(selected.total_spend), cls: "purple" },
+                { label: "Revenue",       value: fmtCurr(selected.total_revenue), cls: "cyan" },
+                { label: "Conversions",   value: fmt(selected.total_conversions), cls: "green" },
+                { label: "ROAS",          value: Number(selected.roas).toFixed(2) + "x", cls: selected.roas >= 3 ? "green" : "yellow" },
+                {
+                    label: "Spend MoM",
+                    value: React.createElement(MomChip, { val: selected.mom_spend_pct }),
+                    cls: "yellow"
+                },
+                {
+                    label: "Revenue MoM",
+                    value: React.createElement(MomChip, { val: selected.mom_revenue_pct }),
+                    cls: "purple"
+                },
+                ].map((k, i) =>
+                React.createElement("div", { key: i, className: `kpi-card ${k.cls}` },
+                    React.createElement("div", { className: "kpi-label" }, k.label),
+                    React.createElement("div", { className: "kpi-value", style: { fontSize: 22 } }, k.value)
+                )
+                )
+            ),
+            React.createElement("div", { className: "card" },
+                React.createElement("div", { className: "card-title" }, "All Months Summary"),
+                React.createElement("div", { className: "table-wrap" },
+                React.createElement("table", null,
+                    React.createElement("thead", null,
+                    React.createElement("tr", null,
+                        React.createElement("th", null, "Month"),
+                        React.createElement("th", null, "Spend"),
+                        React.createElement("th", null, "Revenue"),
+                        React.createElement("th", null, "Conversions"),
+                        React.createElement("th", null, "ROAS"),
+                        React.createElement("th", null, "Spend MoM"),
+                        React.createElement("th", null, "Revenue MoM"),
+                    )
+                    ),
+                    React.createElement("tbody", null,
+                    months.map((m, i) =>
+                        React.createElement("tr", {
+                        key: i,
+                        style: m.month === selectedMonth ? { background: "rgba(124,58,237,0.1)" } : {},
+                        onClick: () => setSelectedMonth(m.month), style: { cursor: "pointer" },
+                        },
+                        React.createElement("td", null, m.month),
+                        React.createElement("td", null, fmtCurr(m.total_spend)),
+                        React.createElement("td", null, fmtCurr(m.total_revenue)),
+                        React.createElement("td", null, fmt(m.total_conversions)),
+                        React.createElement("td", null,
+                            React.createElement("span", { className: `roas-badge ${roasColor(m.roas)}` }, Number(m.roas).toFixed(2) + "x")
+                        ),
+                        React.createElement("td", null,
+                            m.mom_spend_pct != null
+                            ? React.createElement("span", { className: `mom-indicator ${m.mom_spend_pct >= 0 ? "mom-up" : "mom-down"}` },
+                                m.mom_spend_pct >= 0 ? "▲" : "▼", " ", Math.abs(m.mom_spend_pct).toFixed(1) + "%"
+                                )
+                            : React.createElement("span", { style: { color: "var(--muted)" } }, "—")
+                        ),
+                        React.createElement("td", null,
+                            m.mom_revenue_pct != null
+                            ? React.createElement("span", { className: `mom-indicator ${m.mom_revenue_pct >= 0 ? "mom-up" : "mom-down"}` },
+                                m.mom_revenue_pct >= 0 ? "▲" : "▼", " ", Math.abs(m.mom_revenue_pct).toFixed(1) + "%"
+                                )
+                            : React.createElement("span", { style: { color: "var(--muted)" } }, "—")
+                        ),
+                        )
+                    )
+                    )
+                )
+                )
+            )
+            )
+        );
+        }
     </script>
 </body>
 </html>
