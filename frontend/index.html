@@ -174,6 +174,141 @@
             )
         );
         }
+
+        function ChannelsPage() {
+            const [sortBy, setSortBy]   = useState("roas");
+            const [order,  setOrder]    = useState("desc");
+            const url = `${API_BASE}/channels?sort_by=${sortBy}&order=${order}`;
+            const { data, loading, error } = useFetch(url);
+            const chartRef = useRef(null);
+            const chartInstance = useRef(null);
+
+            useEffect(() => {
+                if (!data || !chartRef.current) return;
+                const chs = data.channels;
+                if (chartInstance.current) chartInstance.current.destroy();
+                chartInstance.current = new Chart(chartRef.current, {
+                type: "radar",
+                data: {
+                    labels: ["ROAS", "CTR%", "CVR%", "Conversions (norm)", "Revenue (norm)"],
+                    datasets: chs.map((c, i) => {
+                    const colors = ["rgba(124,58,237,0.7)","rgba(6,182,212,0.7)","rgba(16,185,129,0.7)","rgba(245,158,11,0.7)","rgba(239,68,68,0.7)","rgba(168,85,247,0.7)","rgba(236,72,153,0.7)"];
+                    const maxRev = Math.max(...chs.map(x => x.total_revenue));
+                    const maxConv = Math.max(...chs.map(x => x.total_conversions));
+                    return {
+                        label: c.name,
+                        data: [
+                        Math.min((c.roas / 10) * 10, 10),
+                        Math.min(c.avg_ctr, 10),
+                        Math.min(c.avg_cvr, 10),
+                        (c.total_conversions / maxConv) * 10,
+                        (c.total_revenue / maxRev) * 10,
+                        ],
+                        backgroundColor: colors[i % colors.length].replace("0.7","0.15"),
+                        borderColor: colors[i % colors.length],
+                        borderWidth: 2, pointRadius: 3,
+                    };
+                }),
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { labels: { color: "#6b6b80", font: { family: "Space Mono", size: 10 } } } },
+                scales: { r: { grid: { color: "#1e1e2e" }, ticks: { display: false }, pointLabels: { color: "#6b6b80", font: { family: "Space Mono", size: 10 } } } },
+            },
+            });
+        }, [data]);
+
+        const toggleSort = (col) => {
+            if (sortBy === col) setOrder(o => o === "desc" ? "asc" : "desc");
+            else { setSortBy(col); setOrder("desc"); }
+        };
+
+        const SortTh = ({ col, children }) =>
+            React.createElement("th", {
+                className: sortBy === col ? "sorted" : "",
+                onClick: () => toggleSort(col),
+            },
+            children,
+                React.createElement("span", { className: `sort-icon ${sortBy === col ? "active" : ""}` },
+                    sortBy === col ? (order === "desc" ? " ↓" : " ↑") : " ⇅"
+            )
+        );
+
+        return React.createElement("div", { className: "fade-up" },
+                React.createElement("div", { className: "page-header" },
+                    React.createElement("div", { className: "page-title" }, "Channel Performance"),
+                    React.createElement("div", { className: "page-sub" }, "Click column headers to sort")
+                ),
+                React.createElement("div", { className: "two-col" },
+                React.createElement("div", { className: "card" },
+                    React.createElement("div", { className: "card-title" }, "Channel Radar"),
+                    React.createElement("div", { className: "chart-container" },
+                    React.createElement("canvas", { ref: chartRef })
+                    )
+                ),
+                React.createElement("div", { className: "card" },
+                    React.createElement("div", { className: "card-title" }, "Quick Sort"),
+                    React.createElement("div", { className: "filters" },
+                    React.createElement("div", { className: "filter-group" },
+                        React.createElement("label", null, "Sort By"),
+                        React.createElement("select", { value: sortBy, onChange: e => setSortBy(e.target.value) },
+                        ["roas","total_spend","total_revenue","total_conversions","cpa","cpc"].map(o =>
+                            React.createElement("option", { key: o, value: o }, o.replace("total_","").toUpperCase())
+                        )
+                        )
+                    ),
+                React.createElement("div", { className: "filter-group" },
+                    React.createElement("label", null, "Order"),
+                    React.createElement("select", { value: order, onChange: e => setOrder(e.target.value) },
+                    React.createElement("option", { value: "desc" }, "Descending"),
+                    React.createElement("option", { value: "asc" },  "Ascending")
+                    )
+                )
+                )
+            )
+            ),
+        loading ? React.createElement(Spinner) :
+        error   ? React.createElement(ErrorBox, { msg: error }) :
+        React.createElement("div", { className: "card" },
+        React.createElement("div", { className: "table-wrap" },
+            React.createElement("table", null,
+            React.createElement("thead", null,
+                React.createElement("tr", null,
+                React.createElement("th", null, "Channel"),
+                React.createElement(SortTh, { col: "total_spend" }, "Spend"),
+                React.createElement(SortTh, { col: "total_revenue" }, "Revenue"),
+                React.createElement(SortTh, { col: "total_conversions" }, "Conversions"),
+                React.createElement(SortTh, { col: "roas" }, "ROAS"),
+                React.createElement(SortTh, { col: "cpa" }, "CPA"),
+                React.createElement(SortTh, { col: "cpc" }, "CPC"),
+                React.createElement("th", null, "CTR%"),
+                React.createElement("th", null, "CVR%"),
+                )
+            ),
+                React.createElement("tbody", null,
+                    data.channels.map((c, i) =>
+                    React.createElement("tr", { key: i },
+                        React.createElement("td", { style: { fontFamily: "var(--sans)", fontWeight: 700, fontSize: 13 } }, c.name),
+                        React.createElement("td", null, fmtCurr(c.total_spend)),
+                        React.createElement("td", null, fmtCurr(c.total_revenue)),
+                        React.createElement("td", null, fmt(c.total_conversions)),
+                        React.createElement("td", null,
+                        React.createElement("span", { className: `roas-badge ${roasColor(c.roas)}` },
+                            Number(c.roas).toFixed(2) + "x"
+                        )
+                        ),
+                        React.createElement("td", null, fmtCurr(c.cpa)),
+                        React.createElement("td", null, fmtCurr(c.cpc)),
+                        React.createElement("td", null, Number(c.avg_ctr).toFixed(2) + "%"),
+                        React.createElement("td", null, Number(c.avg_cvr).toFixed(2) + "%"),
+                    )
+                    )
+                )
+                )
+            )
+            )
+        );
+        }
     </script>
 </body>
 </html>
