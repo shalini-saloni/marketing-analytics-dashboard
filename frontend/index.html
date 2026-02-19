@@ -831,6 +831,27 @@
                 )
             );
         }
+
+        function App() {
+            const [page, setPage] = useState("overview");
+
+            const pages = {
+                overview:  React.createElement(OverviewPage),
+                channels:  React.createElement(ChannelsPage),
+                monthly:   React.createElement(MonthlyPage),
+                campaigns: React.createElement(CampaignsPage),
+                insights:  React.createElement(InsightsPage),
+            };
+
+            return React.createElement("div", { className: "app" },
+                React.createElement(Sidebar, { active: page, onNav: setPage }),
+                React.createElement("main", { className: "main" },
+                pages[page] || React.createElement(OverviewPage)
+                )
+            );
+            }
+
+        ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
     </script>
 </body>
 </html>
